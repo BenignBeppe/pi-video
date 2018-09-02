@@ -23,14 +23,8 @@ media_player = None
 omxplayer = None
 
 def setup_dbus():
-    # OMXPLAYER_DBUS_ADDR="/tmp/omxplayerdbus.${USER:-root}"
-    # OMXPLAYER_DBUS_PID="/tmp/omxplayerdbus.${USER:-root}.pid"
-    # export DBUS_SESSION_BUS_ADDRESS=`cat $OMXPLAYER_DBUS_ADDR`
-    # export DBUS_SESSION_BUS_PID=`cat $OMXPLAYER_DBUS_PID`
     try:
-        # call_command(["omxplayer"])
         user = getpass.getuser()
-        # user = os.environ["USER"]
         omxplayer_dbus_address = "/tmp/omxplayerdbus.{}".format(user)
         os.environ["DBUS_SESSION_BUS_ADDRESS"] = \
             open(omxplayer_dbus_address).read().rstrip()
@@ -127,7 +121,6 @@ def get_duration():
 
 @app.route("/video/load", methods=["POST"])
 def load():
-    logging.debug("< load()")
     try:
         stop()
     except:
@@ -141,7 +134,6 @@ def load():
     omxplayer = call_command(command)
     while not setup_dbus(): time.sleep(1.0)
     duration = get_duration()
-    logging.debug("< load()")
     return jsonify(duration=duration), 200
 
 def stop():
