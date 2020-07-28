@@ -1,12 +1,14 @@
 $(function() {
     var duration = null;
+    var time = 0;
+    var playing = false;
 
     function postRequest(endpoint, data) {
         return sendRequest("POST", endpoint, data);
     }
 
     function sendRequest(method, endpoint, data) {
-        let url = "http://192.168.0.13:5000/video/" + endpoint;
+        let url = "http://192.168.1.65:5000/video/" + endpoint;
         let request = $.ajax({
             type: method,
             url: url,
@@ -25,15 +27,30 @@ $(function() {
         return sendRequest("GET", endpoint, data);
     }
 
-    function updatePosition() {
-        getRequest("position")
+    function updateStatus() {
+        getRequest("status")
             .done((data) => {
-                let seconds = parseFloat(data.position);
-                let progress = seconds / duration * 100.0;
-                $(".position .progress-bar").css("width", progress + "%");
-                let timestamp = secondsToTimestamp(seconds);
-                $(".position .progress-bar").text(timestamp);
+                $(".video-url").val(data.url);
+                updateTime(data);
+                // let seconds = parseFloat(data.time);
+                // setTime(seconds);
+                playing = data.playing
             });
+    }
+
+    function updateTime(data) {
+        console.log("> updateTime():", data);
+        let seconds = parseFloat(data.time);
+        setTime(seconds);
+    }
+
+    function setTime(seconds) {
+        let progress = seconds / duration * 100.0;
+        $(".time progress").attr("value", progress);
+        let timestamp = secondsToTimestamp(seconds);
+        $(".time .current-time").text(timestamp);
+        // $(".time .progress-bar").text(timestamp);
+        time = seconds;
     }
 
     function secondsToTimestamp(totalSeconds) {
@@ -52,67 +69,93 @@ $(function() {
     }
 
     $(".play").click(() => {
-        postRequest("play_pause");
+        postRequest("play_pause")
+            .done((data) => {
+                playing = data.playing;
+            });
     });
     $(".short-backward").click(() => {
-        postRequest("back", {duration: 3.0});
+        postRequest("back", {duration: 3.0})
+            .done(updateTime);
     });
     $(".long-backward").click(() => {
-        postRequest("back", {duration: 10.0});
+        postRequest("back", {duration: 10.0})
+            .done(updateTime);
     });
     $(".short-forward").click(() => {
-        postRequest("forward", {duration: 3.0});
+        postRequest("forward", {duration: 3.0})
+            .done(updateTime);
     });
     $(".long-forward").click(() => {
-        postRequest("forward", {duration: 10.0});
+        postRequest("forward", {duration: 10.0})
+            .done(updateTime);
     });
-    $(".position").mousedown((event) => {
-        draggingPosition = true;
-    });
-    $(".position").mousemove((event) => {
-        if(draggingPosition) {
-        }
-    });
-    getRequest("duration")
-        .done((data) => {
-            setDuration(data.duration);
-        });
-    function setDuration(newDuration) {
-        duration = newDuration;
-        $(".duration").text(secondsToTimestamp(duration));
-    };
-    updatePosition();
-    setInterval(() => {
-            updatePosition();
-        },
-        1000
-    );
     $(".skip-to").click(() => {
-        let timestamp = $(".skip-to-time").val();
-        let timeArray = timestamp.split(":");
-        let hours = timeArray[0];
-        let minutes = timeArray[1];
-        let seconds = timeArray[2];
+        // let timestamp = $(".skip-to-time").val();
+        // let timeArray = timestamp.split(":");
+        // let hours = timeArray[0];
+        // let minutes = timeArray[1];
+        // let seconds = timeArray[2];
         postRequest(
-            "position",
+            "time",
             {
-                hours: hours,
-                minutes: minutes,
-                seconds: seconds
+                hours: $(".skip-to-hours").val(),
+                minutes: $(".skip-to-minutes").val(),
+                seconds: $(".skip-to-seconds").val()
             }
-        );
+        )
+            .done(updateTime);
     });
     $(".load-video").click(() => {
+        loadVideo();
+    });
+    function loadVideo() {
+        $(".load-video").attr("disabled", true);
         let url = $(".video-url").val();
         statusMessage("info", `Loading video from URL: ${url}`);
         postRequest("load", {url: url})
             .done((data) => {
                 setDuration(data.duration);
             })
-            .fail((data) => {
+            .fail(() => {
                 statusMessage("danger", "Loading video failed.");
+            })
+            .always(() => {
+                $(".load-video").attr("disabled", false);
             });
+    };
+    $(".video-url").keypress((event) => {
+        if(event.which === 13) {
+            loadVideo();
+        }
     });
+    // $(".time").mousedown((event) => {
+    //     draggingTime = true;
+    // });
+    // $(".time").mousemove((event) => {
+    //     if(draggingTime) {
+    //     }
+    // });
+    getRequest("duration")
+        .done((data) => {
+            setDuration(data.duration);
+        });
+
+    function setDuration(newDuration) {
+        duration = newDuration;
+        $(".duration").text(secondsToTimestamp(duration));
+    }
+
+    updateStatus();
+    setInterval(
+        () => {
+            if(playing) {
+                setTime(time + 1);
+                // updateTime();
+            }
+        },
+        1000
+    );
     function statusMessage(type, message) {
         let $alert = $("<div></div>")
             .addClass(`alert alert-${type}`)
