@@ -1,16 +1,21 @@
-#! /usr/bin/env python3
+#! /usr/bin/env python
 
 import os
 import logging
-import getpass
+# import getpass
 import sqlite3
+import subprocess
+from time import sleep
 
 from flask import Flask
 from flask import request
 from flask import jsonify
 from flask import abort
 from flask_cors import CORS
-from omxplayer.player import OMXPlayer
+# from omxplayer.player import OMXPlayer
+
+from omx_player import OmxPlayer
+from vlc_player import VlcPlayer
 
 app = Flask(__name__)
 CORS(app)
@@ -18,11 +23,14 @@ media_player = None
 omxplayer = None
 url = ""
 database_connection = None
-player = None
+player = VlcPlayer()
 
 def setup_database():
     execute_database(
         "CREATE TABLE IF NOT EXISTS session (url text, time real)"
+    )
+    execute_database(
+        "CREATE TABLE IF NOT EXISTS video_urls (player_url text, video_url text)"
     )
 
 def execute_database(statement):
@@ -54,41 +62,29 @@ def execute_database(statement):
 #     #     logging.exception("Couldn't setup DBus.")
 #     #     return False
 
-def get_from_database(variable):
-    cursor = execute_database("SELECT {} FROM session".format(variable))
+def get_from_database(table, variable):
+    cursor = execute_database("SELECT {} FROM {}".format(variable, table))
     return cursor.fetchall()[-1]
 
 @app.route("/video/play_pause", methods=["POST"])
 def play_pause():
     player.play_pause()
-    playing = get_playing()
+    playing = player.get_playing()
+    save_session()
     return jsonify(playing=playing), 200
-
-def get_playing():
-    status = player.playback_status()
-    if status == "Playing":
-        return True
-    elif status == "Paused":
-        return False
-    logging.warning("Unknown playback status: '{}'".format(status))
 
 @app.route("/video/back", methods=["POST"])
 def back():
     duration = float(get_query_argument("duration"))
-    time = seek(-duration)
+    time = player.seek(-duration)
+    save_session()
     return jsonify(time=time), 200
 
 def get_query_argument(key):
     return request.form.get(key)
 
-def seek(duration):
-    player.seek(duration)
-    time = get_time()
-    save_session()
-    return time
-
 def save_session():
-    time = get_time()
+    time = player.get_time()
     logging.info("Saving session: {}, {}".format(url, time))
     execute_database(
         'REPLACE INTO session VALUES("{}", {})'.format(url, time)
@@ -97,46 +93,37 @@ def save_session():
 @app.route("/video/forward", methods=["POST"])
 def forward():
     duration = float(get_query_argument("duration"))
-    time = seek(duration)
+    time = player.seek(duration)
+    save_session()
     return jsonify(time=time), 200
 
 @app.route("/video/status", methods=["GET"])
 def status():
-    try:
-        time = get_time()
-        playing = get_playing()
-        return jsonify(url=url, time=time, playing=playing), 200
-    except:
-        abort(500)
+    # try:
+    time = player.get_time()
+    playing = player.get_playing()
+    return jsonify(url=url, time=time, playing=playing), 200
+    # except:
+    #     abort(500)
 
-def get_time():
-    time = player.position()
-    return time
-
-@app.route("/video/time", methods=["POST"])
-def time():
+@app.route("/video/skip", methods=["POST"])
+def skip():
     hours = int(get_query_argument("hours"))
     minutes = int(get_query_argument("minutes"))
     seconds = int(get_query_argument("seconds"))
-    seconds = hours * 60 * 60 \
-        minutes * 60 \
+    seconds = hours * 60 * 60 + \
+        minutes * 60 + \
         seconds
-    player.set_position(seconds)
-    time = get_time()
+    time = player.skip(seconds)
     save_session()
     return jsonify(time=time), 200
 
 @app.route("/video/duration")
 def duration():
-    duration = get_duration()
+    duration = player.get_duration()
     if duration is None:
         abort(500)
     return jsonify(duration=duration), 200
-
-def get_duration():
-    logging.debug("> get_duration()")
-    duration = player.duration()
-    return duration
 
 @app.route("/video/load", methods=["POST"])
 def load():
@@ -155,25 +142,29 @@ def load():
         "-f", "[tbr<2500]",
         url
     ]
-    logging.debug("Calling youtube-dl: {}".format(" ".join(youtube_dl_command)))
-    video_url = \
-        call_command(youtube_dl_command, True).rstrip()
-    omxplayer_arguments = "-o hdmi --no-boost-on-downmix"
-    player = OMXPlayer(video_url)
-    logging.info("Starting omxplayer for URL: {}".format(video_url))
-    logging.debug("omxplayer arguments: {}".format(omxplayer_arguments))
-    # omxplayer = call_command(omxplayer_command)
-    # Wait until Omxplayer is done loading before returning duration.
-    # while not setup_dbus(): sleep(1.0)
-    logging.debug("Video loaded.")
-    duration = get_duration()
-    logging.debug("duration", duration)
-    save_session()
-    logging.debug(session)
-    return jsonify(duration=duration), 200
+    result = execute_database(
+        'SELECT video_url FROM video_urls WHERE player_url="{}"'.format(url)
+    ).fetchall()
+    if result:
+        video_url = result[0][0]
+        logging.info("Using video URL from database: {}".format(video_url))
+    else:
+        logging.info("URL not found in database, fetching new.")
+        logging.debug("Calling youtube-dl: {}".format(" ".join(youtube_dl_command)))
+        video_url = call_command(youtube_dl_command, True).rstrip()
+        logging.info("Saving video URL to database.")
+        execute_database(
+            'INSERT INTO video_urls VALUES("{}", "{}")'.format(url, video_url)
+        )
 
-def stop():
-    player.quit()
+    player.load(video_url)
+    # sleep(2.5)
+    logging.debug("Video loaded.")
+    duration = player.get_duration()
+    logging.debug("duration = {}".format(duration))
+    save_session()
+    # logging.debug(session)
+    return jsonify(duration=duration), 200
 
 def call_command(command, output=False):
     if output:
@@ -187,7 +178,7 @@ if __name__ == "__main__":
     logging.basicConfig(
         filename=log_path,
         level=logging.DEBUG,
-        format="%(asctime) [%(level)] %(message)s"
+        format="%(asctime)s %(levelname)s %(module)s %(message)s"
     )
     # setup_dbus()
     # while not setup_dbus(): sleep(1.0)
@@ -196,7 +187,7 @@ if __name__ == "__main__":
         check_same_thread=False
     )
     setup_database()
-    url = get_from_database("url")
+    url = get_from_database("session", "url")
     logging.debug("Good to go.")
     app.run(host="0.0.0.0", debug=True)
     database_connection.close()

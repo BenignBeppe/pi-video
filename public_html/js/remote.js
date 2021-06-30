@@ -97,7 +97,7 @@ $(function() {
         // let minutes = timeArray[1];
         // let seconds = timeArray[2];
         postRequest(
-            "time",
+            "skip",
             {
                 hours: $(".skip-to-hours").val(),
                 minutes: $(".skip-to-minutes").val(),
@@ -124,18 +124,12 @@ $(function() {
                 $(".load-video").attr("disabled", false);
             });
     };
+
     $(".video-url").keypress((event) => {
         if(event.which === 13) {
             loadVideo();
         }
     });
-    // $(".time").mousedown((event) => {
-    //     draggingTime = true;
-    // });
-    // $(".time").mousemove((event) => {
-    //     if(draggingTime) {
-    //     }
-    // });
     getRequest("duration")
         .done((data) => {
             setDuration(data.duration);
