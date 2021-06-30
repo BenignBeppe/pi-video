@@ -8,7 +8,7 @@ $(function() {
     }
 
     function sendRequest(method, endpoint, data) {
-        let url = "http://192.168.1.65:5000/video/" + endpoint;
+        let url = "http://" + window.location.host + ":5000/video/" + endpoint;
         let request = $.ajax({
             type: method,
             url: url,
