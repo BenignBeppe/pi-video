@@ -14,7 +14,7 @@ from flask import abort
 from flask_cors import CORS
 # from omxplayer.player import OMXPlayer
 
-from omx_player import OmxPlayer
+# from omx_player import OmxPlayer
 from vlc_player import VlcPlayer
 
 app = Flask(__name__)
@@ -126,30 +126,34 @@ def duration():
     return jsonify(duration=duration), 200
 
 @app.route("/video/load", methods=["POST"])
-def load():
+def load(get_fresh_url):
     # try:
     #     stop()
     # except:
     #     logging.debug("Nothing to stop.")
     # FIXME
     global url
+    video_url = None
+    from_database = False
     url = get_query_argument("url")
     logging.info("Loading video from URL: {}".format(url))
-    youtube_dl_command = [
-        "youtube-dl",
-        "-g",
-        "--no-playlist",
-        "-f", "[tbr<2500]",
-        url
-    ]
-    result = execute_database(
-        'SELECT video_url FROM video_urls WHERE player_url="{}"'.format(url)
-    ).fetchall()
-    if result:
-        video_url = result[0][0]
-        logging.info("Using video URL from database: {}".format(video_url))
-    else:
+    if not get_fresh_url:
+        result = execute_database(
+            'SELECT video_url FROM video_urls WHERE player_url="{}"'.format(url)
+        ).fetchall()
+        if result:
+            video_url = result[0][0]
+            from_database = True
+            logging.info("Using video URL from database: {}".format(video_url))
+    if not video_url:
         logging.info("URL not found in database, fetching new.")
+        youtube_dl_command = [
+            "youtube-dl",
+            "-g",
+            "--no-playlist",
+            "-f", "[tbr<2500]",
+            url
+        ]
         logging.debug("Calling youtube-dl: {}".format(" ".join(youtube_dl_command)))
         video_url = call_command(youtube_dl_command, True).rstrip()
         logging.info("Saving video URL to database.")
@@ -157,13 +161,15 @@ def load():
             'INSERT INTO video_urls VALUES("{}", "{}")'.format(url, video_url)
         )
 
-    player.load(video_url)
-    # sleep(2.5)
-    logging.debug("Video loaded.")
+    try:
+        player.load(video_url)
+    except:
+        logging.info("Failed to load video.")
+        if from_database:
+            load(True)
     duration = player.get_duration()
     logging.debug("duration = {}".format(duration))
     save_session()
-    # logging.debug(session)
     return jsonify(duration=duration), 200
 
 def call_command(command, output=False):

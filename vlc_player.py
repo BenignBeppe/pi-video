@@ -22,10 +22,13 @@ class VlcPlayer:
             return
 
         new_time = time + amount
-        self.set_time(new_time)
+        self.skip(new_time)
 
-    def set_time(self, time):
+    def skip(self, time):
         self._player.set_time(int(time * 1000))
+
+    def play_pause(self):
+        self._player.pause()
 
     def get_duration(self):
         duration = self._player.get_length()
