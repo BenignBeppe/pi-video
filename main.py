@@ -13,6 +13,7 @@ from flask import jsonify
 from flask import abort
 from flask_cors import CORS
 # from omxplayer.player import OMXPlayer
+import youtube_dl
 
 # from omx_player import OmxPlayer
 from vlc_player import VlcPlayer
@@ -126,7 +127,7 @@ def duration():
     return jsonify(duration=duration), 200
 
 @app.route("/video/load", methods=["POST"])
-def load(get_fresh_url):
+def load(get_fresh_url=False):
     # try:
     #     stop()
     # except:
@@ -143,23 +144,22 @@ def load(get_fresh_url):
         ).fetchall()
         if result:
             video_url = result[0][0]
-            from_database = True
-            logging.info("Using video URL from database: {}".format(video_url))
+            if video_url:
+                from_database = True
+                logging.info("Using video URL from database: {}".format(video_url))
     if not video_url:
         logging.info("URL not found in database, fetching new.")
-        youtube_dl_command = [
-            "youtube-dl",
-            "-g",
-            "--no-playlist",
-            "-f", "[tbr<2500]",
-            url
-        ]
-        logging.debug("Calling youtube-dl: {}".format(" ".join(youtube_dl_command)))
-        video_url = call_command(youtube_dl_command, True).rstrip()
-        logging.info("Saving video URL to database.")
-        execute_database(
-            'INSERT INTO video_urls VALUES("{}", "{}")'.format(url, video_url)
-        )
+        ydl_opts = {
+            "format": "[tbr<2500]",
+            "forceurl": True
+        }
+        with youtube_dl.YoutubeDL(ydl_opts) as ydl:
+            info = ydl.extract_info(url, download=False)
+            video_url = info["url"]
+            logging.info("Saving video URL to database.")
+            execute_database(
+                'REPLACE INTO video_urls VALUES("{}", "{}")'.format(url, video_url)
+            )
 
     try:
         player.load(video_url)
