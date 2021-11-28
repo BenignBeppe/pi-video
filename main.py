@@ -11,6 +11,7 @@ from flask import Flask
 from flask import request
 from flask import jsonify
 from flask import abort
+from flask import render_template
 from flask_cors import CORS
 # from omxplayer.player import OMXPlayer
 import youtube_dl
@@ -41,40 +42,23 @@ def execute_database(statement):
     database_connection.commit()
     return cursor
 
-# def setup_dbus():
-#     # try:
-#         user = getpass.getuser()
-#         omxplayer_dbus_address = "/tmp/omxplayerdbus.{}".format(user)
-#         os.environ["DBUS_SESSION_BUS_ADDRESS"] = \
-#             open(omxplayer_dbus_address).read().rstrip()
-#         omxplayer_dbus_pid = "/tmp/omxplayerdbus.{}.pid".format(user)
-#         os.environ["DBUS_SESSION_BUS_PID"] = \
-#             open(omxplayer_dbus_pid).read().rstrip()
-#         bus = dbus.SessionBus()
-#         # FIXME
-#         global media_player
-#         media_player = bus.get_object(
-#             "org.mpris.MediaPlayer2.omxplayer",
-#             "/org/mpris/MediaPlayer2"
-#         )
-#         logging.debug("DBus setup properly.")
-#     #     return True
-#     # except:
-#     #     logging.exception("Couldn't setup DBus.")
-#     #     return False
-
 def get_from_database(table, variable):
     cursor = execute_database("SELECT {} FROM {}".format(variable, table))
     return cursor.fetchall()[-1]
 
-@app.route("/video/play_pause", methods=["POST"])
+@app.route("/")
+def home():
+    return render_template("home.html")
+
+
+@app.route("/play_pause", methods=["POST"])
 def play_pause():
     player.play_pause()
     playing = player.get_playing()
     save_session()
     return jsonify(playing=playing), 200
 
-@app.route("/video/back", methods=["POST"])
+@app.route("/back", methods=["POST"])
 def back():
     duration = float(get_query_argument("duration"))
     time = player.seek(-duration)
@@ -91,14 +75,14 @@ def save_session():
         'REPLACE INTO session VALUES("{}", {})'.format(url, time)
     )
 
-@app.route("/video/forward", methods=["POST"])
+@app.route("/forward", methods=["POST"])
 def forward():
     duration = float(get_query_argument("duration"))
     time = player.seek(duration)
     save_session()
     return jsonify(time=time), 200
 
-@app.route("/video/status", methods=["GET"])
+@app.route("/status", methods=["GET"])
 def status():
     # try:
     time = player.get_time()
@@ -107,7 +91,7 @@ def status():
     # except:
     #     abort(500)
 
-@app.route("/video/skip", methods=["POST"])
+@app.route("/skip", methods=["POST"])
 def skip():
     hours = int(get_query_argument("hours"))
     minutes = int(get_query_argument("minutes"))
@@ -119,14 +103,14 @@ def skip():
     save_session()
     return jsonify(time=time), 200
 
-@app.route("/video/duration")
+@app.route("/duration")
 def duration():
     duration = player.get_duration()
     if duration is None:
         abort(500)
     return jsonify(duration=duration), 200
 
-@app.route("/video/load", methods=["POST"])
+@app.route("/load", methods=["POST"])
 def load(get_fresh_url=False):
     # try:
     #     stop()
