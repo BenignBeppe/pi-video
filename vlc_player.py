@@ -12,8 +12,10 @@ class VlcPlayer:
         # self._player = vlc.MediaPlayer(url)
         # self._player.set_mrl("rtsp://{}".format(url))
         media = self._instance.media_new(url)
+        media.parse()
         # media.get_mrl()
         self._player.set_media(media)
+        logging.info("Starting playback.")
         self._player.play()
 
     def seek(self, amount):
@@ -22,9 +24,10 @@ class VlcPlayer:
             return
 
         new_time = time + amount
-        self.skip(new_time)
+        self.skip_to(new_time)
+        return new_time
 
-    def skip(self, time):
+    def skip_to(self, time):
         self._player.set_time(int(time * 1000))
 
     def play_pause(self):
