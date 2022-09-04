@@ -1,0 +1,45 @@
+<!doctype html>
+<html>
+  <head>
+    <script defer src="{{ url_for('static', filename='js/player.js')}}"></script>
+    <script defer src="{{ url_for('static', filename='node_modules/@fortawesome/fontawesome-free/js/all.js')}}"></script>
+    <link href="static/css/player.css" rel="stylesheet">
+  </head>
+  <body>
+    <div class="time">
+      <span class="current-time">{{ time }}</span>
+      <div class="progress-container">
+          <div class="progress-bar" style="width: {{ progress }}%"></div>
+      </div>
+      <span class="duration">{{ duration }}</span>
+    </div>
+    <div>
+      <button class="skip-back-long">
+        <i class="fa fa-fast-backward"></i>
+      </button>
+      <button class="skip-back-short">
+        <i class="fa fa-step-backward"></i>
+      </button>
+      <button class="play-pause">
+        <i class="fa fa-play"></i>
+        <i class="fa fa-pause"></i>
+      </button>
+      <button class="skip-forward-short">
+        <i class="fa fa-step-forward"></i>
+      </button>
+      <button class="skip-forward-long">
+        <i class="fa fa-fast-forward"></i>
+      </button>
+    </div>
+    <div>
+        <input type="number" class="skip-to-hours two-digits" value="0" min="0" />
+        <input type="number" class="skip-to-minutes two-digits" value="0" min="0" max="59" />
+        <input type="number" class="skip-to-seconds two-digits" value="0" min="0" max="59" />
+        <button class="skip-to">Skip to</button>
+    </div>
+    <div>
+        <input id="page-url" type="text" value="{{ page_url }}" placeholder="Page URL" autocomplete="on">
+        <button class="load">Load</button>
+    </div>
+  </body>
+</html>

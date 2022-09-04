@@ -1,0 +1,29 @@
+body {
+    font-size: 200%;
+    display: grid;
+    gap: 0.5em;
+}
+
+* {
+    font-size: inherit;
+}
+
+.two-digits {
+    width: 2em;
+}
+
+.time {
+    display: grid;
+    grid-template-columns: auto 1fr auto;
+    gap: 0.5em;
+}
+
+.progress-container {
+    border: 1px solid;
+    border-radius: 3px;
+}
+
+.progress-bar {
+    height: 100%;
+    background: orange;
+}
