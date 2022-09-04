@@ -47,3 +47,29 @@ document.querySelector(".skip-forward-short").onclick = () => {
 document.querySelector(".skip-forward-long").onclick = () => {
     post("/skip-forward-long");
 };
+
+let timeEventSource = new EventSource("/progress");
+timeEventSource.onmessage = (event) => {
+    let data = JSON.parse(event.data);
+
+    let currentTimeLabel = document.querySelector(".current-time");
+    currentTimeLabel.textContent = secondsToTimestamp(data.time);
+
+    let progressBar = document.querySelector(".progress-bar");
+    progressBar.style.width = `${data.progress * 100}%`
+};
+
+function secondsToTimestamp(totalSeconds) {
+    let time = new Date(0, 0, 0, 0, 0, totalSeconds);
+    let hours = time.getHours();
+    let minutes = time.getMinutes();
+    if(minutes < 10) {
+        minutes = "0" + minutes;
+    }
+    let seconds = time.getSeconds();
+    if(seconds < 10) {
+        seconds = "0" + seconds;
+    }
+    let timestamp = `${hours}:${minutes}:${seconds}`;
+    return timestamp;
+}

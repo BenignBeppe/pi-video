@@ -1,9 +1,12 @@
 import logging
+from time import sleep
+import json
 
 from flask import jsonify
 from flask import render_template
 from flask import request
 from flask import abort
+from flask import Response
 from vlc import Instance
 from youtube_dl import YoutubeDL
 
@@ -181,3 +184,23 @@ def skip_to():
     seconds += minutes * 60 + hours * 60 * 60
     player.skip_to(seconds)
     return "", 200
+
+
+@app.route("/progress")
+def progress():
+    def _events():
+        while True:
+            time = player.get_time()
+            if player.get_duration():
+                progress = time / player.get_duration()
+            else:
+                progress = 0
+            data = {
+                "time": time,
+                "progress": progress
+            }
+            event_string = f"data: {json.dumps(data)}\n\n".encode("utf-8")
+            yield event_string
+            sleep(1)
+
+    return Response(_events(), mimetype="text/event-stream")
