@@ -24,6 +24,24 @@ body {
 }
 
 .progress-bar {
+    max-width: 100%;
     height: 100%;
-    background: orange;
+    background: #fa0;
+    text-align: center;
+}
+
+.loading {
+    width: 100%;
+    animation-duration: 2s;
+    animation-name: pulse;
+    animation-iteration-count: infinite;
+    animation-direction: alternate;
+    animation-timing-function: ease;
+    background: #0c0;
+}
+
+@keyframes pulse {
+  from {
+    background: inherit;
+  }
 }

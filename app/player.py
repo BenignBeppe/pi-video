@@ -1,6 +1,7 @@
 import logging
 from time import sleep
 import json
+from queue import Queue
 
 from flask import jsonify
 from flask import render_template
@@ -8,6 +9,7 @@ from flask import request
 from flask import abort
 from flask import Response
 from vlc import Instance
+from vlc import EventType
 from youtube_dl import YoutubeDL
 
 from app import app
@@ -21,11 +23,35 @@ class Player:
     def __init__(self):
         self._instance = Instance()
         self._player = self._instance.media_player_new()
+        self.vlc_events = self._player.event_manager()
+        self.vlc_events.event_attach(
+            EventType.MediaPlayerTimeChanged,
+            self._update_time
+        )
         self.page_url = None
         self.video_url = None
+        self.queue = Queue()
+
+
+    def _update_time(self, event):
+        time = self.get_time()
+        if player.get_duration():
+            progress = time / player.get_duration()
+        else:
+            progress = 0
+        data = {
+            "time": time,
+            "progress": progress
+        }
+        self._send_event("time", data)
+
+
+    def _send_event(self, type, data=""):
+        self.queue.put({"type": type, "data": data})
 
 
     def load(self, page_url):
+        self._send_event("loading")
         logging.info(f"Loading video from {page_url}.")
         self.page_url = page_url
         ydl_opts = {
@@ -79,7 +105,7 @@ class Player:
         return time / 1000
 
 
-    def get_playing(self):
+    def is_playing(self):
         return self._player.is_playing() == 1
 
 
@@ -186,21 +212,17 @@ def skip_to():
     return "", 200
 
 
-@app.route("/progress")
+@app.route("/events")
 def progress():
     def _events():
         while True:
-            time = player.get_time()
-            if player.get_duration():
-                progress = time / player.get_duration()
-            else:
-                progress = 0
-            data = {
-                "time": time,
-                "progress": progress
-            }
-            event_string = f"data: {json.dumps(data)}\n\n".encode("utf-8")
-            yield event_string
-            sleep(1)
+            if player.queue.empty():
+                continue
+
+            event = player.queue.get()
+            logging.debug(f"Sending event: {event}.")
+            data = json.dumps(event['data'])
+            event_string = f"event: {event['type']}\ndata: {data}\n\n"
+            yield event_string.encode("utf-8")
 
     return Response(_events(), mimetype="text/event-stream")
