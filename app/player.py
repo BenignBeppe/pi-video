@@ -217,6 +217,7 @@ def progress():
     def _events():
         while True:
             if player.queue.empty():
+                sleep(0.1)
                 continue
 
             event = player.queue.get()
