@@ -48,11 +48,11 @@ document.querySelector(".skip-forward-long").onclick = () => {
     post("/skip-forward-long");
 };
 
-let timeEventSource = new EventSource("/events");
+let eventSource = new EventSource("/events");
 let currentTimeLabel = document.querySelector(".current-time");
 let progressBar = document.querySelector(".progress-bar");
 
-timeEventSource.addEventListener("time", (event) => {
+eventSource.addEventListener("time", (event) => {
     let data = JSON.parse(event.data);
     currentTimeLabel.textContent = secondsToTimestamp(data.time);
     progressBar.classList.remove("loading");
@@ -60,7 +60,7 @@ timeEventSource.addEventListener("time", (event) => {
     progressBar.textContent = "";
 });
 
-timeEventSource.addEventListener("loading", () => {
+eventSource.addEventListener("loading", () => {
     progressBar.classList.add("loading");
     progressBar.style.removeProperty("width");
     progressBar.textContent = "Loading...";

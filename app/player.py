@@ -2,6 +2,7 @@ import logging
 from time import sleep
 import json
 from queue import Queue
+import math
 
 from flask import jsonify
 from flask import render_template
@@ -30,11 +31,17 @@ class Player:
         )
         self.page_url = None
         self.video_url = None
-        self.queue = Queue()
+        self.event_queues = set()
+        self._last_event_time = 0
 
 
     def _update_time(self, event):
-        time = self.get_time()
+        time = math.floor(self.get_time())
+        if time == self._last_event_time:
+            # Don't send an event unless the time has changed
+            # noticably.
+            return
+
         if player.get_duration():
             progress = time / player.get_duration()
         else:
@@ -44,10 +51,12 @@ class Player:
             "progress": progress
         }
         self._send_event("time", data)
+        self._last_event_time = time
 
 
     def _send_event(self, type, data=""):
-        self.queue.put({"type": type, "data": data})
+        for queue in self.event_queues:
+            queue.put({"type": type, "data": data})
 
 
     def load(self, page_url):
@@ -213,17 +222,20 @@ def skip_to():
 
 
 @app.route("/events")
-def progress():
+def events():
+    logging.debug("Event connection opened.")
+    queue = Queue()
+    player.event_queues.add(queue)
     def _events():
-        while True:
-            if player.queue.empty():
-                sleep(0.1)
-                continue
-
-            event = player.queue.get()
-            logging.debug(f"Sending event: {event}.")
-            data = json.dumps(event['data'])
-            event_string = f"event: {event['type']}\ndata: {data}\n\n"
-            yield event_string.encode("utf-8")
+        try:
+            while True:
+                event = queue.get()
+                logging.debug(f"Sending event: {event}.")
+                data = json.dumps(event['data'])
+                event_string = f"event: {event['type']}\ndata: {data}\n\n"
+                yield event_string.encode("utf-8")
+        finally:
+            player.event_queues.discard(queue)
+            logging.debug("Event connection lost.")
 
     return Response(_events(), mimetype="text/event-stream")
