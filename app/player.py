@@ -1,5 +1,4 @@
 import logging
-from time import sleep
 import json
 from queue import Queue
 import math
@@ -34,7 +33,6 @@ class Player:
         self.event_queues = set()
         self._last_event_time = 0
 
-
     def _update_time(self, event):
         time = math.floor(self.get_time())
         if time == self._last_event_time:
@@ -53,11 +51,9 @@ class Player:
         self._send_event("time", data)
         self._last_event_time = time
 
-
     def _send_event(self, type, data=""):
         for queue in self.event_queues:
             queue.put({"type": type, "data": data})
-
 
     def load(self, page_url):
         self._send_event("loading")
@@ -79,24 +75,20 @@ class Player:
         logging.info("Starting playback.")
         self._player.play()
 
-
     def seek(self, amount):
         time = self.get_time()
-        if time == None:
+        if time is None:
             return
 
         new_time = time + amount
         self.skip_to(new_time)
         return new_time
 
-
     def skip_to(self, time):
         self._player.set_time(int(time * 1000))
 
-
     def play_pause(self):
         self._player.pause()
-
 
     def get_duration(self):
         duration = self._player.get_length()
@@ -105,7 +97,6 @@ class Player:
 
         return duration / 1000
 
-
     def get_time(self):
         time = self._player.get_time()
         if time == -1:
@@ -113,14 +104,11 @@ class Player:
 
         return time / 1000
 
-
     def is_playing(self):
         return self._player.is_playing() == 1
 
-
     def get_duration_string(self):
         return self._make_time_string(self.get_duration())
-
 
     def _make_time_string(self, seconds):
         """Convert second into string of the format 'H:MM:SS:'"""
@@ -139,7 +127,6 @@ class Player:
         time_string = f"{hours}:{minutes:02}:{seconds:02}"
 
         return time_string
-
 
     def get_time_string(self):
         return self._make_time_string(self.get_time())
@@ -226,12 +213,13 @@ def events():
     logging.debug("Event connection opened.")
     queue = Queue()
     player.event_queues.add(queue)
+
     def _events():
         try:
             while True:
                 event = queue.get()
                 logging.debug(f"Sending event: {event}.")
-                data = json.dumps(event['data'])
+                data = json.dumps(event["data"])
                 event_string = f"event: {event['type']}\ndata: {data}\n\n"
                 yield event_string.encode("utf-8")
         finally:
