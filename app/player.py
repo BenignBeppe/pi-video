@@ -13,6 +13,8 @@ from vlc import EventType
 from youtube_dl import YoutubeDL
 
 from app import app
+from app import db
+from app.models import Video
 
 
 SHORT_SKIP = 10
@@ -59,17 +61,23 @@ class Player:
         self._send_event("loading")
         logging.info(f"Loading video from {page_url}.")
         self.page_url = page_url
-        ydl_opts = {
-            "format": "[tbr<2500]",
-            "forceurl": True
-        }
-        with YoutubeDL(ydl_opts) as ydl:
-            info = ydl.extract_info(page_url, download=False)
-            video_url = info["url"]
-
-        self.video_url = video_url
-        logging.debug(f"Video URL: {video_url}.")
-        media = self._instance.media_new(video_url)
+        video = Video.query.filter_by(page_url=page_url).first()
+        if video is None:
+            video = Video(page_url)
+        if video.video_url is None:
+            logging.debug("Fetching video URL from page.")
+            ydl_opts = {
+                "format": "[tbr<2500]",
+                "forceurl": True
+            }
+            with YoutubeDL(ydl_opts) as ydl:
+                info = ydl.extract_info(page_url, download=False)
+                video.video_url = info["url"]
+                logging.debug(f"Video URL retrieved: {video.video_url}.")
+                db.session.add(video)
+                db.session.commit()
+        logging.info(f"Video URL: {video.video_url}.")
+        media = self._instance.media_new(video.video_url)
         media.parse()
         self._player.set_media(media)
         logging.info("Starting playback.")
