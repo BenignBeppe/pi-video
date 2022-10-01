@@ -51,6 +51,7 @@ document.querySelector(".skip-forward-long").onclick = () => {
 let eventSource = new EventSource("/events");
 let currentTimeLabel = document.querySelector(".current-time");
 let progressBar = document.querySelector(".progress-bar");
+let durationLabel = document.querySelector(".duration");
 
 eventSource.addEventListener("time", (event) => {
     let data = JSON.parse(event.data);
@@ -80,3 +81,7 @@ function secondsToTimestamp(totalSeconds) {
     let timestamp = `${hours}:${minutes}:${seconds}`;
     return timestamp;
 }
+
+eventSource.addEventListener("duration", (event) => {
+    durationLabel.textContent = secondsToTimestamp(event.data);
+});

@@ -30,6 +30,10 @@ class Player:
             EventType.MediaPlayerTimeChanged,
             self._update_time
         )
+        self.vlc_events.event_attach(
+            EventType.MediaPlayerLengthChanged,
+            self._update_duration
+        )
         self.page_url = None
         self.video_url = None
         self.event_queues = set()
@@ -56,6 +60,9 @@ class Player:
     def _send_event(self, type, data=""):
         for queue in self.event_queues:
             queue.put({"type": type, "data": data})
+
+    def _update_duration(self, event):
+        self._send_event("duration", self.get_duration())
 
     def load(self, page_url):
         self._send_event("loading")
