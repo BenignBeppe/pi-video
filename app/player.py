@@ -35,12 +35,15 @@ class Player:
             self._update_duration
         )
         self.page_url = None
-        self.video_url = None
         self.event_queues = set()
         self._last_event_time = 0
 
     def _update_time(self, event):
         time = math.floor(self.get_time())
+        if time != 0  and time % 60 == 0:
+            # Save time every full minute.
+            self._save_time(time)
+
         if time == self._last_event_time:
             # Don't send an event unless the time has changed
             # noticably.
@@ -56,6 +59,18 @@ class Player:
         }
         self._send_event("time", data)
         self._last_event_time = time
+
+    def _save_time(self, time):
+        video = Video.query.filter_by(page_url=self.page_url).first()
+        if video is None:
+            return
+
+        if video.time == time:
+            return
+
+        video.time = time
+        db.session.add(video)
+        db.session.commit()
 
     def _send_event(self, type, data=""):
         for queue in self.event_queues:
@@ -89,6 +104,8 @@ class Player:
         self._player.set_media(media)
         logging.info("Starting playback.")
         self._player.play()
+        if video.time:
+            self.skip_to(video.time)
 
     def seek(self, amount):
         time = self.get_time()
@@ -101,6 +118,7 @@ class Player:
 
     def skip_to(self, time):
         self._player.set_time(int(time * 1000))
+        self._save_time(time)
 
     def play_pause(self):
         self._player.pause()
