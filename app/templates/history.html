@@ -1,7 +1,7 @@
 {% extends "base.html" %}
 
 {% block styles %}
-<link  rel="stylesheet" href="static/css/history.css">
+<link  rel="stylesheet" href="{{ url_for('static', filename='css/history.css') }}">
 {% endblock %}
 
 {% block content %}
@@ -13,9 +13,10 @@
     </tr>
     {% for video in videos %}
     <tr>
-        <td>{{ video.page_url }}</td>
+        <td><a href="{{ url_for('load', url=video.page_url) }}">{{ video.title }}</a></td>
         <td>{% if video.last_played %} {{ video.last_played }} {% endif %}</td>
         <td>{{ video.time }}</td>
     </tr>
-{% endfor %}
+    {% endfor %}
+</table>
 {% endblock %}

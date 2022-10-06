@@ -10,6 +10,8 @@ from flask import render_template
 from flask import request
 from flask import abort
 from flask import Response
+from flask import redirect
+from flask import url_for
 from vlc import Instance
 from vlc import EventType
 from youtube_dl import YoutubeDL
@@ -98,6 +100,7 @@ class Player:
             with YoutubeDL(ydl_opts) as ydl:
                 info = ydl.extract_info(page_url, download=False)
                 video.video_url = info["url"]
+                video.title = info["title"]
                 logging.debug(f"Video URL retrieved: {video.video_url}.")
                 db.session.add(video)
                 db.session.commit()
@@ -194,14 +197,20 @@ def player():
     return render_template("player.html", **parameters)
 
 
-@app.route("/load", methods=["POST"])
+@app.route("/load", methods=["GET", "POST"])
 def load():
-    page_url = request.form.get("url")
-    if not page_url:
-        abort(400, description="Missing required parameter 'url'.")
+    if request.method == 'POST':
+        page_url = request.form.get("url")
+        if not page_url:
+            abort(400, description="Missing required parameter 'url'.")
 
-    _player.load(page_url)
-    return jsonify(duration=_player.get_duration())
+        _player.load(page_url)
+        return jsonify(duration=_player.get_duration())
+    else:
+        page_url = request.args.get("url")
+        if page_url:
+            _player.load(page_url)
+        return redirect(url_for("player"))
 
 
 @app.route("/play-pause", methods=["POST"])

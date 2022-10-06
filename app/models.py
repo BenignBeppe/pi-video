@@ -6,6 +6,7 @@ from app import db
 
 class Video(db.Model):
     id = db.Column(db.Integer, primary_key=True)
+    title = db.Column(db.Text, default="")
     page_url = db.Column(db.Text, nullable=False, index=True, unique=True)
     video_url = db.Column(db.Text, default="")
     time = db.Column(db.Integer, default=0)
@@ -16,6 +17,6 @@ class Video(db.Model):
 
     def __repr__(self):
         return (
-            f"Video({self.page_url}, {self.video_url}, {self.time}, "
-            f"{self.last_played})"
+            f"Video({self.title}, {self.page_url}, {self.video_url}, "
+            f"{self.time}, {self.last_played})"
         )
