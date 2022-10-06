@@ -2,6 +2,8 @@ import logging
 import json
 from queue import Queue
 import math
+from datetime import datetime
+from datetime import timezone
 
 from flask import jsonify
 from flask import render_template
@@ -40,7 +42,7 @@ class Player:
 
     def _update_time(self, event):
         time = math.floor(self.get_time())
-        if time != 0  and time % 60 == 0:
+        if time != 0 and time % 60 == 0:
             # Save time every full minute.
             self._save_time(time)
 
@@ -49,8 +51,8 @@ class Player:
             # noticably.
             return
 
-        if player.get_duration():
-            progress = time / player.get_duration()
+        if _player.get_duration():
+            progress = time / _player.get_duration()
         else:
             progress = 0
         data = {
@@ -69,6 +71,7 @@ class Player:
             return
 
         video.time = time
+        video.last_played = datetime.now(timezone.utc)
         db.session.add(video)
         db.session.commit()
 
@@ -165,22 +168,23 @@ class Player:
         return self._make_time_string(self.get_time())
 
 
-player = Player()
+_player = Player()
 
 
+@app.route("/player")
 @app.route("/")
-def home():
-    time = player.get_time()
-    duration = player.get_duration()
+def player():
+    time = _player.get_time()
+    duration = _player.get_duration()
     if duration:
         progress = time / duration * 100
     else:
         progress = 0
-    page_url = player.page_url
+    page_url = _player.page_url
     if page_url is None:
         page_url = ""
-    time_string = player.get_time_string()
-    duration_string = player.get_duration_string()
+    time_string = _player.get_time_string()
+    duration_string = _player.get_duration_string()
     parameters = {
         "time": time_string,
         "duration": duration_string,
@@ -196,37 +200,37 @@ def load():
     if not page_url:
         abort(400, description="Missing required parameter 'url'.")
 
-    player.load(page_url)
-    return jsonify(duration=player.get_duration())
+    _player.load(page_url)
+    return jsonify(duration=_player.get_duration())
 
 
 @app.route("/play-pause", methods=["POST"])
 def play_pause():
-    player.play_pause()
+    _player.play_pause()
     return "", 200
 
 
 @app.route("/skip-back-long", methods=["POST"])
 def skip_back_long():
-    player.seek(LONG_SKIP * -1)
+    _player.seek(LONG_SKIP * -1)
     return "", 200
 
 
 @app.route("/skip-back-short", methods=["POST"])
 def skip_back_short():
-    player.seek(SHORT_SKIP * -1)
+    _player.seek(SHORT_SKIP * -1)
     return "", 200
 
 
 @app.route("/skip-forward-short", methods=["POST"])
 def skip_forward_short():
-    player.seek(SHORT_SKIP)
+    _player.seek(SHORT_SKIP)
     return "", 200
 
 
 @app.route("/skip-forward-long", methods=["POST"])
 def skip_forward_long():
-    player.seek(LONG_SKIP)
+    _player.seek(LONG_SKIP)
     return "", 200
 
 
@@ -237,7 +241,7 @@ def skip_to():
     seconds = request.form.get("seconds", 0, int)
 
     seconds += minutes * 60 + hours * 60 * 60
-    player.skip_to(seconds)
+    _player.skip_to(seconds)
     return "", 200
 
 
@@ -245,7 +249,7 @@ def skip_to():
 def events():
     logging.debug("Event connection opened.")
     queue = Queue()
-    player.event_queues.add(queue)
+    _player.event_queues.add(queue)
 
     def _events():
         try:
@@ -256,7 +260,7 @@ def events():
                 event_string = f"event: {event['type']}\ndata: {data}\n\n"
                 yield event_string.encode("utf-8")
         finally:
-            player.event_queues.discard(queue)
+            _player.event_queues.discard(queue)
             logging.debug("Event connection lost.")
 
     return Response(_events(), mimetype="text/event-stream")

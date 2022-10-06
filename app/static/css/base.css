@@ -1,0 +1,9 @@
+body {
+    font-size: 200%;
+    display: grid;
+    gap: 0.5em;
+}
+
+* {
+    font-size: inherit;
+}

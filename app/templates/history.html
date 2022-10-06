@@ -1,0 +1,21 @@
+{% extends "base.html" %}
+
+{% block styles %}
+<link  rel="stylesheet" href="static/css/history.css">
+{% endblock %}
+
+{% block content %}
+<table>
+    <tr>
+        <th>URL</th>
+        <th>Last played</th>
+        <th>Progress</th>
+    </tr>
+    {% for video in videos %}
+    <tr>
+        <td>{{ video.page_url }}</td>
+        <td>{% if video.last_played %} {{ video.last_played }} {% endif %}</td>
+        <td>{{ video.time }}</td>
+    </tr>
+{% endfor %}
+{% endblock %}

@@ -14,4 +14,5 @@ logging.basicConfig(format=log_format, level=logging.DEBUG)
 
 
 from app import player # noqa E402
+from app import history # noqa E402
 from app import models # noqa E402

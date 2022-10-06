@@ -1,14 +1,21 @@
+from datetime import datetime
+from datetime import timezone
+
 from app import db
 
 
 class Video(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     page_url = db.Column(db.Text, nullable=False, index=True, unique=True)
-    video_url = db.Column(db.Text)
-    time = db.Column(db.Integer)
+    video_url = db.Column(db.Text, default="")
+    time = db.Column(db.Integer, default=0)
+    last_played = db.Column(db.DateTime, default=datetime.now(timezone.utc))
 
     def __init__(self, page_url):
         self.page_url = page_url
 
     def __repr__(self):
-        return f"Video({self.page_url}, {self.video_url}, {self.time})"
+        return (
+            f"Video({self.page_url}, {self.video_url}, {self.time}, "
+            f"{self.last_played})"
+        )
