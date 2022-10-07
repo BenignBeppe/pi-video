@@ -14,7 +14,7 @@
     {% for video in videos %}
     <tr>
         <td><a href="{{ url_for('load', url=video.page_url) }}">{{ video.title }}</a></td>
-        <td>{% if video.last_played %} {{ video.last_played }} {% endif %}</td>
+        <td>{% if video.last_played %} {{ video.last_played.isoformat(" ", "seconds") }} {% endif %}</td>
         <td>{{ video.time }}</td>
     </tr>
     {% endfor %}
