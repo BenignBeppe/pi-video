@@ -6,5 +6,5 @@ from app.models import Video
 
 @app.route("/history")
 def history():
-    videos = Video.query.all()
+    videos = Video.query.order_by(Video.last_played.desc()).all()
     return render_template("history.html", videos=videos)

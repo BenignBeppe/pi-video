@@ -102,8 +102,6 @@ class Player:
                 video.video_url = info["url"]
                 video.title = info["title"]
                 logging.debug(f"Video URL retrieved: {video.video_url}.")
-                db.session.add(video)
-                db.session.commit()
         logging.info(f"Video URL: {video.video_url}.")
         media = self._instance.media_new(video.video_url)
         media.parse()
@@ -112,6 +110,9 @@ class Player:
         self._player.play()
         if video.time:
             self.skip_to(video.time)
+        video.last_played = datetime.now(timezone.utc)
+        db.session.add(video)
+        db.session.commit()
 
     def seek(self, amount):
         time = self.get_time()
